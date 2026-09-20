@@ -15,6 +15,7 @@ import { Route as AlgorithmsRouteImport } from './routes/algorithms'
 import { Route as BookRouteImport } from './routes/book'
 import { Route as ComplexityRouteImport } from './routes/complexity'
 import { Route as DriversRouteImport } from './routes/drivers'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as QueueRouteImport } from './routes/queue'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +48,11 @@ const DriversRoute = DriversRouteImport.update({
   path: '/drivers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const QueueRoute = QueueRouteImport.update({
   id: '/queue',
   path: '/queue',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/book': typeof BookRoute
   '/complexity': typeof ComplexityRoute
   '/drivers': typeof DriversRoute
+  '/profile': typeof ProfileRoute
   '/queue': typeof QueueRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/book': typeof BookRoute
   '/complexity': typeof ComplexityRoute
   '/drivers': typeof DriversRoute
+  '/profile': typeof ProfileRoute
   '/queue': typeof QueueRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/book': typeof BookRoute
   '/complexity': typeof ComplexityRoute
   '/drivers': typeof DriversRoute
+  '/profile': typeof ProfileRoute
   '/queue': typeof QueueRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/complexity'
     | '/drivers'
+    | '/profile'
     | '/queue'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/complexity'
     | '/drivers'
+    | '/profile'
     | '/queue'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/complexity'
     | '/drivers'
+    | '/profile'
     | '/queue'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +130,7 @@ export interface RootRouteChildren {
   BookRoute: typeof BookRoute
   ComplexityRoute: typeof ComplexityRoute
   DriversRoute: typeof DriversRoute
+  ProfileRoute: typeof ProfileRoute
   QueueRoute: typeof QueueRoute
 }
 
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DriversRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/queue': {
       id: '/queue'
       path: '/queue'
@@ -182,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   BookRoute: BookRoute,
   ComplexityRoute: ComplexityRoute,
   DriversRoute: DriversRoute,
+  ProfileRoute: ProfileRoute,
   QueueRoute: QueueRoute,
 }
 export const routeTree = rootRouteImport

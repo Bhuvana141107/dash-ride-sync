@@ -25,20 +25,74 @@ export const DEMAND_MULTIPLIERS: Record<DemandLevel, number> = {
 
 export const DEMAND_LEVELS: DemandLevel[] = ["Low", "Normal", "High", "Very High"];
 
+/* ----------------------------- vehicle classes ---------------------------- */
+
+export type VehicleType =
+  | "Bike"
+  | "Auto"
+  | "Cab Mini"
+  | "Cab Sedan"
+  | "Cab SUV"
+  | "Premium"
+  | "Parcel";
+
+export interface VehicleClass {
+  type: VehicleType;
+  emoji: string;
+  /** scales both base fare and per-unit rate */
+  multiplier: number;
+  capacity: number;
+  /** minutes of extra pickup delay used in ETA display */
+  etaBias: number;
+  tagline: string;
+}
+
+export const VEHICLES: VehicleClass[] = [
+  { type: "Bike", emoji: "🏍️", multiplier: 0.5, capacity: 1, etaBias: 1, tagline: "Cheapest, beats traffic" },
+  { type: "Auto", emoji: "🛺", multiplier: 0.7, capacity: 3, etaBias: 2, tagline: "Metered three-wheeler" },
+  { type: "Cab Mini", emoji: "🚗", multiplier: 1.0, capacity: 4, etaBias: 3, tagline: "Compact AC hatchback" },
+  { type: "Cab Sedan", emoji: "🚙", multiplier: 1.25, capacity: 4, etaBias: 3, tagline: "Extra legroom & boot" },
+  { type: "Cab SUV", emoji: "🚐", multiplier: 1.6, capacity: 6, etaBias: 4, tagline: "Groups and luggage" },
+  { type: "Premium", emoji: "🏎️", multiplier: 2.0, capacity: 4, etaBias: 5, tagline: "Top-rated captains" },
+  { type: "Parcel", emoji: "📦", multiplier: 0.6, capacity: 0, etaBias: 2, tagline: "Send a package" },
+];
+
+export const VEHICLE_BY_TYPE: Record<VehicleType, VehicleClass> = VEHICLES.reduce(
+  (acc, v) => {
+    acc[v.type] = v;
+    return acc;
+  },
+  {} as Record<VehicleType, VehicleClass>,
+);
+
 /** Euclidean distance -> O(1) */
 export function euclideanDistance(a: Point, b: Point): number {
   return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2);
 }
 
-/** Fare = base + (distance * ratePerUnit * surge) -> O(1) */
+/**
+ * Demand-based load surge from the design doc:
+ *   surge = queue size ÷ available drivers, clamped to [1.0, 2.0]   -> O(1)
+ */
+export function loadSurge(queueSize: number, availableDrivers: number): number {
+  if (queueSize <= 0) return 1;
+  if (availableDrivers <= 0) return 2;
+  const raw = queueSize / availableDrivers;
+  return Math.round(Math.min(2, Math.max(1, raw)) * 100) / 100;
+}
+
+/** Fare = (base + distance × rate) × vehicle × demand surge × load surge -> O(1) */
 export function calculateFare(
   distance: number,
   demand: DemandLevel,
   baseFare: number,
   ratePerUnit: number,
+  vehicleMultiplier = 1,
+  load = 1,
 ): number {
-  const surge = DEMAND_MULTIPLIERS[demand] ?? 1;
-  const fare = baseFare + Math.max(0, distance) * ratePerUnit * surge;
+  const surge = (DEMAND_MULTIPLIERS[demand] ?? 1) * (load || 1);
+  const fare =
+    (baseFare + Math.max(0, distance) * ratePerUnit) * vehicleMultiplier * surge;
   return Math.round(fare * 100) / 100;
 }
 
@@ -51,6 +105,7 @@ export class RideNode {
   distance: number;
   fare: number;
   demandLevel: DemandLevel;
+  vehicleType: VehicleType;
   status: RideStatus;
   createdAt: number;
   assignedDriverId: string | null = null;
@@ -65,8 +120,10 @@ export class RideNode {
     distance: number;
     fare: number;
     demandLevel: DemandLevel;
+    vehicleType?: VehicleType;
     status?: RideStatus;
     createdAt?: number;
+    assignedDriverId?: string | null;
   }) {
     this.rideId = init.rideId;
     this.riderName = init.riderName;
@@ -75,8 +132,10 @@ export class RideNode {
     this.distance = init.distance;
     this.fare = init.fare;
     this.demandLevel = init.demandLevel;
+    this.vehicleType = init.vehicleType ?? "Cab Mini";
     this.status = init.status ?? "Waiting";
     this.createdAt = init.createdAt ?? Date.now();
+    this.assignedDriverId = init.assignedDriverId ?? null;
   }
 }
 
@@ -87,6 +146,10 @@ export interface Driver {
   locationY: number;
   status: DriverStatus;
   currentRide: string | null;
+  vehicleType: VehicleType;
+  vehicleNumber: string;
+  rating: number;
+  trips: number;
 }
 
 /** FIFO dispatch queue backed by a doubly linked list + hash map. */
@@ -132,11 +195,8 @@ export class DispatchQueue {
     return node;
   }
 
-  /** Hash-map lookup + pointer surgery. O(1) — no traversal. */
-  cancel(rideId: string): RideNode | null {
-    const node = this.rideMap.get(rideId); // STEP: hash map lookup
-    if (!node) return null;
-
+  /** Remove any node by direct reference. O(1) — no traversal. */
+  remove(node: RideNode): RideNode {
     const prev = node.prev;
     const next = node.next;
 
@@ -148,10 +208,17 @@ export class DispatchQueue {
 
     node.prev = null;
     node.next = null;
-    node.status = "Cancelled";
-
-    this.rideMap.delete(rideId);
+    this.rideMap.delete(node.rideId);
     this.size--;
+    return node;
+  }
+
+  /** Hash-map lookup + pointer surgery. O(1) — no traversal. */
+  cancel(rideId: string): RideNode | null {
+    const node = this.rideMap.get(rideId); // STEP: hash map lookup
+    if (!node) return null;
+    this.remove(node);
+    node.status = "Cancelled";
     return node;
   }
 

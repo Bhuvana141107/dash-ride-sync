@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { MapPin, Plus } from "lucide-react";
+import { MapPin, Plus, Star } from "lucide-react";
 import { useSimulation } from "@/hooks/use-simulation";
 import { store } from "@/lib/simulation";
+import { VEHICLES, VEHICLE_BY_TYPE, type VehicleType } from "@/lib/dsa";
+import { LiveMap } from "@/components/LiveMap";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,26 +17,27 @@ export const Route = createFileRoute("/drivers")({
       {
         name: "description",
         content:
-          "Driver hash map with O(1) availability lookup and a coordinate grid showing live driver positions.",
+          "Live driver map with O(1) availability lookup, on-duty fleet across bikes, autos, cabs and parcel riders.",
       },
       { property: "og:title", content: "Drivers — Rideshare Dispatch System" },
       {
         property: "og:description",
         content:
-          "Driver hash map with O(1) availability lookup and a coordinate grid showing live driver positions.",
+          "Live driver map with O(1) availability lookup, on-duty fleet across bikes, autos, cabs and parcel riders.",
       },
     ],
   }),
   component: DriversPage,
 });
 
-const GRID_MAX = 20;
-
 function DriversPage() {
   const sim = useSimulation();
   const [name, setName] = useState("");
   const [x, setX] = useState("8");
   const [y, setY] = useState("8");
+  const [plate, setPlate] = useState("");
+  const [vehicleType, setVehicleType] = useState<VehicleType>("Cab Mini");
+  const [filter, setFilter] = useState<"All" | VehicleType>("All");
 
   const addDriver = () => {
     const nx = Number(x);
@@ -47,10 +50,21 @@ function DriversPage() {
       toast.error("Driver coordinates must be non-negative numbers.");
       return;
     }
-    const driver = store.addDriver(name.trim(), nx, ny);
-    store.log(`${driver.driverId} registered in driverMap`, "LOOKUP", "O(1)");
+    const driver = store.addDriver(
+      name.trim(),
+      nx,
+      ny,
+      vehicleType,
+      plate.trim() || "TN 00 XX 0000",
+    );
+    store.log(
+      `${driver.driverId} (${vehicleType}) registered in driverMap`,
+      "LOOKUP",
+      "O(1)",
+    );
     store.setDriverStatus(driver.driverId, "Available");
     setName("");
+    setPlate("");
     toast.success(`${driver.driverId} added to the driver hash map.`);
   };
 
@@ -62,74 +76,97 @@ function DriversPage() {
     }
   };
 
+  const availability = sim.availabilityByVehicle();
+  const visible =
+    filter === "All" ? sim.drivers : sim.drivers.filter((d) => d.vehicleType === filter);
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="card-elevated rounded-2xl p-4">
           <p className="text-xs text-muted-foreground">Total Drivers</p>
           <p className="text-2xl font-bold">{sim.driverMap.size}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="card-elevated rounded-2xl p-4">
           <p className="text-xs text-muted-foreground">Available</p>
           <p className="text-2xl font-bold text-success">{sim.availableCount}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Busy</p>
+        <div className="card-elevated rounded-2xl p-4">
+          <p className="text-xs text-muted-foreground">On a Trip</p>
           <p className="text-2xl font-bold text-warning">{sim.busyCount}</p>
+        </div>
+        <div className="card-elevated rounded-2xl p-4">
+          <p className="text-xs text-muted-foreground">Vehicle Classes</p>
+          <p className="text-2xl font-bold text-primary">{VEHICLES.length}</p>
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_1fr]">
+      <section className="card-elevated rounded-2xl p-4 lg:p-5">
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <h2 className="text-sm font-semibold text-card-foreground">
+            Live Fleet Map — driver status in real time
+          </h2>
+          <span className="ml-auto rounded-full bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
+            driverMap.get(id) → O(1)
+          </span>
+        </div>
+        <LiveMap drivers={sim.drivers} rides={sim.rides} height="aspect-[16/9]" />
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <section className="space-y-4">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-3 text-sm font-semibold text-card-foreground">
-              Register Driver (driverMap.set — O(1))
-            </h2>
-            <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr_auto] sm:items-end">
-              <div className="space-y-2">
-                <Label htmlFor="dname">Name</Label>
-                <Input id="dname" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dx">Location X</Label>
-                <Input id="dx" type="number" value={x} onChange={(e) => setX(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dy">Location Y</Label>
-                <Input id="dy" type="number" value={y} onChange={(e) => setY(e.target.value)} />
-              </div>
-              <Button onClick={addDriver}>
-                <Plus className="h-4 w-4" /> Add
-              </Button>
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {(["All", ...VEHICLES.map((v) => v.type)] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f as "All" | VehicleType)}
+                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                  filter === f
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/60"
+                }`}
+              >
+                {f === "All" ? "All" : `${VEHICLE_BY_TYPE[f].emoji} ${f}`}
+                {f !== "All" && ` · ${availability[f] ?? 0}`}
+              </button>
+            ))}
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            {sim.drivers.length === 0 && (
+            {visible.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No drivers yet. Add one or load sample data.
+                No drivers in this class yet — register one on the right.
               </p>
             )}
-            {sim.drivers.map((d) => (
-              <div key={d.driverId} className="rounded-xl border border-border bg-card p-4">
+            {visible.map((d) => (
+              <div key={d.driverId} className="card-elevated rounded-2xl p-4">
                 <div className="flex items-center justify-between">
                   <p className="font-mono text-sm font-bold text-primary">{d.driverId}</p>
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs ${
                       d.status === "Available"
-                        ? "bg-success/15 text-success"
+                        ? "bg-success/12 text-success"
                         : "bg-warning/15 text-warning"
                     }`}
                   >
                     {d.status}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-card-foreground">{d.name}</p>
-                <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3" /> ({d.locationX}, {d.locationY})
+                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-card-foreground">
+                  <span className="text-lg">{VEHICLE_BY_TYPE[d.vehicleType]?.emoji}</span>
+                  {d.name}
+                  <span className="flex items-center gap-0.5 text-xs text-warning">
+                    <Star className="h-3 w-3 fill-current" />
+                    {d.rating.toFixed(1)}
+                  </span>
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Current ride: {d.currentRide ?? "—"}
+                  {d.vehicleType} · {d.vehicleNumber} · {d.trips} trips
+                </p>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3" /> ({d.locationX}, {d.locationY}) · current ride:{" "}
+                  {d.currentRide ?? "—"}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
@@ -159,40 +196,56 @@ function DriversPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card p-4">
+        <section className="card-elevated h-fit space-y-3 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-card-foreground">
-            Driver Location Grid (0–{GRID_MAX})
+            Register a New Driver (driverMap.set — O(1))
           </h2>
-          <div className="relative mt-4 aspect-square w-full rounded-lg border border-border bg-muted/30">
-            <div className="absolute left-0 top-1/2 h-px w-full bg-border" />
-            <div className="absolute left-1/2 top-0 h-full w-px bg-border" />
-            {sim.drivers.map((d) => {
-              const left = Math.min(100, Math.max(0, (d.locationX / GRID_MAX) * 100));
-              const bottom = Math.min(100, Math.max(0, (d.locationY / GRID_MAX) * 100));
-              return (
-                <div
-                  key={d.driverId}
-                  className="absolute -translate-x-1/2 translate-y-1/2 text-center"
-                  style={{ left: `${left}%`, bottom: `${bottom}%` }}
-                  title={`${d.driverId} (${d.locationX}, ${d.locationY})`}
-                >
-                  <span
-                    className={`block h-3 w-3 rounded-full ${
-                      d.status === "Available" ? "bg-success" : "bg-warning"
-                    }`}
-                  />
-                  <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground">
-                    {d.driverId.replace("DRIVER-", "D")}
-                  </span>
-                </div>
-              );
-            })}
-            <span className="absolute bottom-1 right-2 text-[10px] text-muted-foreground">
-              X →
-            </span>
-            <span className="absolute left-2 top-1 text-[10px] text-muted-foreground">Y ↑</span>
+          <div className="space-y-2">
+            <Label htmlFor="dname">Name</Label>
+            <Input id="dname" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          <p className="mt-3 font-mono text-xs text-muted-foreground">
+          <div className="space-y-2">
+            <Label htmlFor="plate">Vehicle Number</Label>
+            <Input
+              id="plate"
+              value={plate}
+              placeholder="TN 09 AB 1234"
+              onChange={(e) => setPlate(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="dx">Location X</Label>
+              <Input id="dx" type="number" value={x} onChange={(e) => setX(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dy">Location Y</Label>
+              <Input id="dy" type="number" value={y} onChange={(e) => setY(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Vehicle Class</Label>
+            <div className="flex flex-wrap gap-2">
+              {VEHICLES.map((v) => (
+                <button
+                  key={v.type}
+                  type="button"
+                  onClick={() => setVehicleType(v.type)}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
+                    vehicleType === v.type
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/60"
+                  }`}
+                >
+                  {v.emoji} {v.type}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Button className="w-full" onClick={addDriver}>
+            <Plus className="h-4 w-4" /> Register Driver
+          </Button>
+          <p className="font-mono text-xs text-muted-foreground">
             Driver Availability Lookup: O(1)
           </p>
         </section>
