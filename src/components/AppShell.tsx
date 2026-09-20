@@ -5,6 +5,7 @@ import {
   CarFront,
   ListOrdered,
   Users,
+  UserCircle,
   GitBranch,
   Gauge,
   Info,
@@ -38,6 +39,7 @@ const NAV = [
   { to: "/drivers", label: "Drivers", icon: Users },
   { to: "/algorithms", label: "Algorithm Visualization", icon: GitBranch },
   { to: "/complexity", label: "Complexity Analysis", icon: Gauge },
+  { to: "/profile", label: "My Profile", icon: UserCircle },
   { to: "/about", label: "Project Info", icon: Info },
 ] as const;
 
@@ -51,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => setMounted(true), []);
 
   const handleSample = () => {
-    if (sim.drivers.length > 0 || sim.rides.length > 0) {
+    if (sim.rides.length > 0) {
       toast.error("Reset the simulation before loading sample data.");
       return;
     }
