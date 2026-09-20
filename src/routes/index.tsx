@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { QueueVisualizer } from "@/components/QueueVisualizer";
 import { DataStructureState } from "@/components/DataStructureState";
 import { ActivityLog } from "@/components/ActivityLog";
+import { LiveMap } from "@/components/LiveMap";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -123,6 +124,17 @@ function Dashboard() {
           </Button>
         </div>
         <QueueVisualizer nodes={sim.rides} />
+      </section>
+
+      <section className="card-elevated rounded-2xl p-4 lg:p-5">
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <h2 className="text-sm font-semibold">Live Fleet Map</h2>
+          <span className="rounded-full bg-warning/15 px-2 py-0.5 font-mono text-[11px] text-warning">
+            load surge ×{sim.loadSurge.toFixed(2)} = queue {sim.queue.size} ÷ free{" "}
+            {sim.availableCount}
+          </span>
+        </div>
+        <LiveMap drivers={sim.drivers} rides={sim.rides} height="aspect-[16/7]" />
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
