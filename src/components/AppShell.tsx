@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -46,6 +46,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const [demoRunning, setDemoRunning] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   const handleSample = () => {
     if (sim.drivers.length > 0 || sim.rides.length > 0) {
@@ -176,7 +179,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             System Online
           </div>
         </header>
-        <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 lg:p-6">{mounted ? children : null}</main>
       </div>
     </div>
   );
