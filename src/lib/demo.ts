@@ -1,0 +1,67 @@
+import { store } from "./simulation";
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Demo mode performs REAL operations on the same DispatchQueue / Maps
+ * the rest of the application uses.
+ */
+export async function runDemo(onStep: (msg: string) => void) {
+  store.reset();
+  onStep("STEP 1 — Creating sample drivers");
+  store.addDriver("Ravi Kumar", 5, 8);
+  store.addDriver("Meena Iyer", 12, 3);
+  store.addDriver("Arun Das", 2, 14);
+  store.log("Demo: 3 drivers registered in driverMap", "SYSTEM", "O(D)");
+  store.hydrate();
+  await wait(900);
+
+  onStep("STEP 2 — enqueue(RIDE-101)");
+  store.addRide({
+    riderName: "Rahul",
+    pickup: { x: 2, y: 3 },
+    drop: { x: 10, y: 8 },
+    demandLevel: "Normal",
+  });
+  await wait(900);
+
+  onStep("STEP 3 — enqueue(RIDE-102)");
+  store.addRide({
+    riderName: "Priya",
+    pickup: { x: 4, y: 9 },
+    drop: { x: 14, y: 2 },
+    demandLevel: "High",
+  });
+  await wait(900);
+
+  onStep("STEP 4 — enqueue(RIDE-103)");
+  store.addRide({
+    riderName: "Arjun",
+    pickup: { x: 1, y: 1 },
+    drop: { x: 6, y: 5 },
+    demandLevel: "Very High",
+  });
+  await wait(900);
+
+  onStep("STEP 5 — Queue: R101 ↔ R102 ↔ R103");
+  await wait(900);
+
+  onStep("STEP 6 — cancel('RIDE-102') via hash map lookup");
+  store.cancelRide("RIDE-102");
+  await wait(1200);
+
+  onStep("STEP 7 — Pointer reconnection complete, node removed");
+  await wait(900);
+
+  onStep("STEP 8 — Queue: R101 ↔ R103");
+  await wait(900);
+
+  onStep("STEP 9 — Match Next Ride → dequeue()");
+  store.matchNextRide();
+  await wait(900);
+
+  onStep("STEP 10 — RIDE-101 assigned, driver status Available → Busy");
+  await wait(900);
+
+  onStep("Demo complete — all operations O(1), space O(R + D)");
+}
