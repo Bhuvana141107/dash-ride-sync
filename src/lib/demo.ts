@@ -8,37 +8,36 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export async function runDemo(onStep: (msg: string) => void) {
   store.reset();
-  onStep("STEP 1 — Creating sample drivers");
-  store.addDriver("Ravi Kumar", 5, 8);
-  store.addDriver("Meena Iyer", 12, 3);
-  store.addDriver("Arun Das", 2, 14);
-  store.log("Demo: 3 drivers registered in driverMap", "SYSTEM", "O(D)");
+  onStep("STEP 1 — On-duty fleet loaded into driverMap");
   await wait(900);
 
-  onStep("STEP 2 — enqueue(RIDE-101)");
+  onStep("STEP 2 — enqueue(RIDE-101) · Cab Mini");
   store.addRide({
     riderName: "Rahul",
     pickup: { x: 2, y: 3 },
     drop: { x: 10, y: 8 },
     demandLevel: "Normal",
+    vehicleType: "Cab Mini",
   });
   await wait(900);
 
-  onStep("STEP 3 — enqueue(RIDE-102)");
+  onStep("STEP 3 — enqueue(RIDE-102) · Bike");
   store.addRide({
     riderName: "Priya",
     pickup: { x: 4, y: 9 },
     drop: { x: 14, y: 2 },
     demandLevel: "High",
+    vehicleType: "Bike",
   });
   await wait(900);
 
-  onStep("STEP 4 — enqueue(RIDE-103)");
+  onStep("STEP 4 — enqueue(RIDE-103) · Auto");
   store.addRide({
     riderName: "Arjun",
     pickup: { x: 1, y: 1 },
     drop: { x: 6, y: 5 },
     demandLevel: "Very High",
+    vehicleType: "Auto",
   });
   await wait(900);
 
@@ -55,7 +54,7 @@ export async function runDemo(onStep: (msg: string) => void) {
   onStep("STEP 8 — Queue: R101 ↔ R103");
   await wait(900);
 
-  onStep("STEP 9 — Match Next Ride → dequeue()");
+  onStep("STEP 9 — Match Next Ride → dequeue() → nearest Cab Mini");
   store.matchNextRide();
   await wait(900);
 
