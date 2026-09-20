@@ -245,7 +245,7 @@ class SimulationStore {
         fare: node.fare,
         distance: node.distance,
         at: Date.now(),
-        outcome: "Cancelled",
+        outcome: "Cancelled" as const,
       },
       ...this.history,
     ].slice(0, 100);
@@ -302,7 +302,7 @@ class SimulationStore {
         fare: ride.fare,
         distance: ride.distance,
         at: Date.now(),
-        outcome: "Matched",
+        outcome: "Matched" as const,
       },
       ...this.history,
     ].slice(0, 100);
@@ -512,7 +512,7 @@ class SimulationStore {
       this.driverMap = new Map(
         (data.drivers ?? []).map((d: Driver) => [
           d.driverId,
-          { rating: 4.5, trips: 0, vehicleType: "Cab Mini" as VehicleType, vehicleNumber: "—", ...d },
+          { ...d, rating: d.rating ?? 4.5, trips: d.trips ?? 0, vehicleType: d.vehicleType ?? ("Cab Mini" as VehicleType), vehicleNumber: d.vehicleNumber ?? "—" },
         ]),
       );
       this.logs = data.logs ?? [];
