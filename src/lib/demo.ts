@@ -13,7 +13,6 @@ export async function runDemo(onStep: (msg: string) => void) {
   store.addDriver("Meena Iyer", 12, 3);
   store.addDriver("Arun Das", 2, 14);
   store.log("Demo: 3 drivers registered in driverMap", "SYSTEM", "O(D)");
-  store.hydrate();
   await wait(900);
 
   onStep("STEP 2 — enqueue(RIDE-101)");
